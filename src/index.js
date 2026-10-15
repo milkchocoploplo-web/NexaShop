@@ -1,4 +1,4 @@
-// Cloudflare Worker - Nexa トークン販売サイト（スマホ対応・背景パララックス修正版）
+// Cloudflare Worker - Nexa トークン販売サイト（スマホ・PC対応 最終デザイン版）
 
 export default {
   async fetch(request, env) {
@@ -138,7 +138,7 @@ function getFutureDate(days) {
 }
 
 // ============================================================
-// 販売ページHTML（背景パララックス・黒背景・Discordリンク対応版）
+// 販売ページHTML（ぼかし背景＋ヘッダー画像＋パララックス）
 // ============================================================
 function getSalesPageHTML(env) {
   const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
@@ -155,7 +155,6 @@ function getSalesPageHTML(env) {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
-    /* 背景全体の設定 */
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
       background: #000000; 
@@ -164,31 +163,17 @@ function getSalesPageHTML(env) {
       overflow-x: hidden;
     }
 
-    /* パララックス用の背景レイヤー */
-    .bg-layer {
+    /* ぼかした背景（パララックスで動く） */
+    .bg-blur {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 120vh; /* スクロールで動く分、長めに確保 */
-      z-index: -1;
+      top: -15%; left: -15%;
+      width: 130%; height: 130%;
       background-image: url('${bgImage}');
       background-size: cover;
-      /* ▼ここを修正：上部ではなく中央を基準にすることで、キャラクターが真ん中に来る */
-      background-position: center center; 
-      background-repeat: no-repeat;
+      background-position: center;
+      filter: blur(30px) brightness(0.4);
+      z-index: -1;
       will-change: transform;
-    }
-
-    /* 背景の上にかぶせる黒いグラデーション（文字を読みやすくする） */
-    .bg-layer::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.85) 30%, #000000 70%);
     }
 
     /* メインコンテンツ */
@@ -197,13 +182,23 @@ function getSalesPageHTML(env) {
       width: 100%; 
       margin: 0 auto; 
       padding: 20px;
-      /* ▼ここを修正：45vh → 30vh に減らし、プランが見えやすく */
-      padding-top: 30vh; 
+      padding-top: 40px; 
       position: relative;
       z-index: 1;
     }
     
-    h1 { text-align: center; color: #ffffff; margin-bottom: 20px; font-size: 32px; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+    /* ヘッダー画像（綺麗に表示される） */
+    .header-image {
+      width: 100%;
+      height: auto;
+      border-radius: 20px;
+      border: 1px solid #333;
+      margin-bottom: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      display: block;
+    }
+
+    h1 { text-align: center; color: #ffffff; margin-bottom: 25px; font-size: 32px; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
     .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     
     /* カードのデザイン */
@@ -236,10 +231,13 @@ function getSalesPageHTML(env) {
   </style>
 </head>
 <body>
-  <!-- 背景レイヤー -->
-  <div class="bg-layer" id="parallaxBg"></div>
+  <!-- ぼかし背景レイヤー -->
+  <div class="bg-blur" id="parallaxBg"></div>
 
   <div class="container">
+    <!-- 綺麗に表示されるヘッダー画像 -->
+    <img src="${bgImage}" class="header-image" alt="Nexa Gameplay">
+
     <h1>Nexa トークン販売</h1>
     <div class="plans">
       <div class="card">
