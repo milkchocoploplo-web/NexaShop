@@ -123,7 +123,7 @@ async function issueTokenOnRender(env, session, uses, expires) {
     },
     body: JSON.stringify({
       user: session.customer_email || 'customer',
-      version: '1.0',
+      version: '3.0',
       uses: uses,
       expires: expires,
       orderId: session.id,
