@@ -11,7 +11,7 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-    if (url.pathname === '/' || url.pathname === '/index.html') {
+    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/success') {
       return new Response(getSalesPageHTML(env), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     if (url.pathname === '/api/create-checkout' && request.method === 'POST') {
