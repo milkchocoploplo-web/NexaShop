@@ -1,4 +1,4 @@
-// Cloudflare Worker - Nexa トークン販売サイト（デザイン変更版）
+// Cloudflare Worker - Nexa トークン販売サイト（背景パララックス対応版）
 
 export default {
   async fetch(request, env) {
@@ -138,7 +138,7 @@ function getFutureDate(days) {
 }
 
 // ============================================================
-// 販売ページHTML（黒背景・画像・Discordリンク対応版）
+// 販売ページHTML（背景パララックス・黒背景・Discordリンク対応版）
 // ============================================================
 function getSalesPageHTML(env) {
   const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
@@ -153,18 +153,63 @@ function getSalesPageHTML(env) {
   <title>Nexa トークン販売</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000000; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: #ffffff; }
-    .container { max-width: 900px; width: 100%; }
     
-    /* ヘッダー画像 */
-    .hero-image { text-align: center; margin-bottom: 25px; }
-    .hero-image img { max-width: 100%; border-radius: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(255,255,255,0.1); }
+    /* 背景全体の設定 */
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      background: #000000; 
+      min-height: 100vh; 
+      color: #ffffff; 
+      overflow-x: hidden;
+    }
+
+    /* 固定された背景画像コンテナ */
+    .bg-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: -1;
+      overflow: hidden;
+    }
+    
+    /* 背景画像本体（パララックスで動く） */
+    .bg-image {
+      width: 100%;
+      height: 150vh; /* スクロールで動く分、余裕を持たせる */
+      object-fit: cover;
+      object-position: center top;
+      opacity: 0.35; /* 文字が読みやすいように暗くする */
+      will-change: transform;
+    }
+    
+    /* 背景の上にかぶせる黒いグラデーション */
+    .bg-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.9) 80%, #000000 100%);
+    }
+
+    /* メインコンテンツ */
+    .container { 
+      max-width: 900px; 
+      width: 100%; 
+      margin: 0 auto; 
+      padding: 20px;
+      padding-top: 60vh; /* 最初は画像を見せて、下にスクロールするとコンテンツが出てくる */
+      position: relative;
+      z-index: 1;
+    }
     
     h1 { text-align: center; color: #ffffff; margin-bottom: 20px; font-size: 32px; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
     .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     
     /* カードのデザイン */
-    .card { background: #111111; border: 1px solid #333; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: transform 0.2s, border-color 0.2s; position: relative; }
+    .card { background: rgba(17, 17, 17, 0.85); backdrop-filter: blur(10px); border: 1px solid #333; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: transform 0.2s, border-color 0.2s; position: relative; }
     .card:hover { transform: translateY(-5px); border-color: #5865F2; }
     .card.popular { border: 2px solid #5865F2; }
     
@@ -193,13 +238,13 @@ function getSalesPageHTML(env) {
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- ⬇️ ここに画像のURLを貼り付けてください ⬇️ -->
-    <div class="hero-image">
-      <img src="https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9788.jpeg" alt="Nexa Gameplay Preview">
-    </div>
-    <!-- ⬆️ ここに画像のURLを貼り付けてください ⬆️ -->
+  <!-- 背景画像（パララックス用） -->
+  <div class="bg-container">
+    <img src="https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9788.jpeg" class="bg-image" id="parallaxImg" alt="Background">
+    <div class="bg-overlay"></div>
+  </div>
 
+  <div class="container">
     <h1>Nexa トークン販売</h1>
     <div class="plans">
       <div class="card">
@@ -249,6 +294,17 @@ function getSalesPageHTML(env) {
   </div>
 
   <script>
+    // === パララックススクロールの処理 ===
+    window.addEventListener('scroll', () => {
+      const scrolled = window.scrollY;
+      const parallaxImg = document.getElementById('parallaxImg');
+      if (parallaxImg) {
+        // スクロール量の0.5倍だけ背景を下に動かす
+        parallaxImg.style.transform = \`translate3d(0, \${scrolled * 0.5}px, 0)\`;
+      }
+    });
+
+    // === 決済処理 ===
     async function startPayment(priceId) {
       if (!priceId || priceId.includes('NOT_SET')) {
         alert('StripeのPrice IDが設定されていません。管理画面を確認してください。');
@@ -269,19 +325,20 @@ function getSalesPageHTML(env) {
       } catch (err) { alert('通信エラー'); btn.disabled = false; btn.textContent = '購入する'; }
     }
 
+    // === 決済完了後の処理 ===
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
     if (sessionId && window.location.pathname === '/success') {
-      document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;"><h2 style="text-align:center;color:white;">✅ 決済完了</h2><p style="text-align:center;margin:20px 0;color:#ccc;">トークンを発行しています...</p></div>';
+      document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;"><h2 style="text-align:center;">✅ 決済完了</h2><p style="text-align:center;margin:20px 0;color:#ccc;">トークンを発行しています...</p></div>';
       fetch('/api/fulfill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       }).then(r => r.json()).then(data => {
         if (data.success) {
-          document.body.innerHTML = \`<div class="card" style="max-width:480px;margin:40px auto;"><h2 style="text-align:center;color:white;">🎉 購入完了！</h2><p style="text-align:center;margin:16px 0;color:#ccc;">あなたのトークン：</p><div style="background:#222;padding:20px;border-radius:12px;text-align:center;border:1px solid #444;"><code style="font-size:20px;font-weight:bold;color:#5865F2;word-break:break-all;">\${data.token}</code></div><p style="text-align:center;margin-top:20px;font-size:14px;color:#888;">このトークンをゲーム内で入力してください</p></div>\`;
+          document.body.innerHTML = \`<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;"><h2 style="text-align:center;">🎉 購入完了！</h2><p style="text-align:center;margin:16px 0;color:#ccc;">あなたのトークン：</p><div style="background:#222;padding:20px;border-radius:12px;text-align:center;border:1px solid #444;"><code style="font-size:20px;font-weight:bold;color:#5865F2;word-break:break-all;">\${data.token}</code></div><p style="text-align:center;margin-top:20px;font-size:14px;color:#888;">このトークンをゲーム内で入力してください</p></div>\`;
         } else {
-          document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;"><h2 style="text-align:center;color:white;">⚠️ エラー</h2><p style="text-align:center;color:#ff5555;">' + (data.error || 'トークン発行に失敗しました') + '</p></div>';
+          document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;"><h2 style="text-align:center;">⚠️ エラー</h2><p style="text-align:center;color:#ff5555;">' + (data.error || 'トークン発行に失敗しました') + '</p></div>';
         }
       });
     }
