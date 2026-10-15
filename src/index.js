@@ -196,7 +196,7 @@ function getSalesPageHTML(env) {
   <div class="container">
     <!-- ⬇️ ここに画像のURLを貼り付けてください ⬇️ -->
     <div class="hero-image">
-      <img src="YOUR_IMAGE_URL_HERE" alt="Nexa Gameplay Preview">
+      <img src="https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9788.jpeg" alt="Nexa Gameplay Preview">
     </div>
     <!-- ⬆️ ここに画像のURLを貼り付けてください ⬆️ -->
 
