@@ -1,4 +1,4 @@
-// Cloudflare Worker - Nexa トークン販売サイト（多言語・多通貨表示対応版）
+// Cloudflare Worker - Nexa トークン販売サイト（多言語・多通貨決済対応版）
 
 export default {
   async fetch(request, env) {
@@ -62,7 +62,7 @@ async function createCheckoutSession(request, env, corsHeaders) {
 }
 
 // ============================================================
-// 決済完了後のトークン発行
+// 決済完了後のトークン発行（通貨を問わずプランを判定）
 // ============================================================
 async function fulfillOrder(request, env, corsHeaders) {
   try {
@@ -80,13 +80,18 @@ async function fulfillOrder(request, env, corsHeaders) {
     const priceId = session.metadata?.priceId;
     let uses, expires;
 
-    if (priceId === env.STRIPE_PRICE_ID_500) {
+    // 通貨を問わず、同じプランなら同じ回数・期限を適用
+    const plan500Ids = [env.STRIPE_PRICE_ID_500, env.STRIPE_PRICE_ID_500_USD, env.STRIPE_PRICE_ID_500_KRW];
+    const plan1000Ids = [env.STRIPE_PRICE_ID_1000, env.STRIPE_PRICE_ID_1000_USD, env.STRIPE_PRICE_ID_1000_KRW];
+    const plan1500Ids = [env.STRIPE_PRICE_ID_1500, env.STRIPE_PRICE_ID_1500_USD, env.STRIPE_PRICE_ID_1500_KRW];
+
+    if (plan500Ids.includes(priceId)) {
       uses = 50;
       expires = getFutureDate(30);
-    } else if (priceId === env.STRIPE_PRICE_ID_1000) {
+    } else if (plan1000Ids.includes(priceId)) {
       uses = 150;
       expires = getFutureDate(30);
-    } else if (priceId === env.STRIPE_PRICE_ID_1500) {
+    } else if (plan1500Ids.includes(priceId)) {
       uses = 1000000;
       expires = '2090-12-31';
     } else {
@@ -95,7 +100,7 @@ async function fulfillOrder(request, env, corsHeaders) {
 
     const token = await issueTokenOnRender(env, session, uses, expires);
 
-    return new Response(JSON.stringify({ success: true, token, message: 'トークンを発行しました。' }), {
+    return new Response(JSON.stringify({ success: true, token, message: 'Token issued.' }), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   } catch (err) {
@@ -138,12 +143,28 @@ function getFutureDate(days) {
 }
 
 // ============================================================
-// 販売ページHTML（多言語・多通貨表示対応版）
+// 販売ページHTML（多言語・多通貨決済対応版）
 // ============================================================
 function getSalesPageHTML(env) {
-  const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
-  const price1000 = env.STRIPE_PRICE_ID_1000 || 'PRICE_1000_NOT_SET';
-  const price1500 = env.STRIPE_PRICE_ID_1500 || 'PRICE_1500_NOT_SET';
+  const prices = {
+    ja: {
+      500: env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET',
+      1000: env.STRIPE_PRICE_ID_1000 || 'PRICE_1000_NOT_SET',
+      1500: env.STRIPE_PRICE_ID_1500 || 'PRICE_1500_NOT_SET',
+    },
+    en: {
+      500: env.STRIPE_PRICE_ID_500_USD || 'PRICE_500_USD_NOT_SET',
+      1000: env.STRIPE_PRICE_ID_1000_USD || 'PRICE_1000_USD_NOT_SET',
+      1500: env.STRIPE_PRICE_ID_1500_USD || 'PRICE_1500_USD_NOT_SET',
+    },
+    ko: {
+      500: env.STRIPE_PRICE_ID_500_KRW || 'PRICE_500_KRW_NOT_SET',
+      1000: env.STRIPE_PRICE_ID_1000_KRW || 'PRICE_1000_KRW_NOT_SET',
+      1500: env.STRIPE_PRICE_ID_1500_KRW || 'PRICE_1500_KRW_NOT_SET',
+    },
+  };
+
+  const pricesJSON = JSON.stringify(prices);
 
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -362,11 +383,11 @@ function getSalesPageHTML(env) {
           <li><span class="check">✓</span> <span data-i18n="feature1_2">発行から30日間有効</span></li>
           <li><span class="check">✓</span> <span data-i18n="feature1_3">1端末のみで使用可能</span></li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${price500}')" data-i18n="buy">購入する</button>
+        <button class="pay-btn" onclick="startPayment(500)" data-i18n="buy">購入する</button>
       </div>
 
       <div class="card popular">
-        <div class="badge">人気</div>
+        <div class="badge" data-i18n="popular">人気</div>
         <div class="plan-name" data-i18n="plan2">スタンダードプラン</div>
         <div class="price" data-i18n="price2">¥1,000</div>
         <ul class="features">
@@ -374,7 +395,7 @@ function getSalesPageHTML(env) {
           <li><span class="check">✓</span> <span data-i18n="feature2_2">発行から30日間有効</span></li>
           <li><span class="check">✓</span> <span data-i18n="feature2_3">1端末のみで使用可能</span></li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${price1000}')" data-i18n="buy">購入する</button>
+        <button class="pay-btn" onclick="startPayment(1000)" data-i18n="buy">購入する</button>
       </div>
 
       <div class="card">
@@ -385,7 +406,7 @@ function getSalesPageHTML(env) {
           <li><span class="check">✓</span> <span data-i18n-html="feature3_2"><b>無期限</b> ✅</span></li>
           <li><span class="check">✓</span> <span data-i18n="feature3_3">1端末のみで使用可能</span></li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${price1500}')" data-i18n="buy">購入する</button>
+        <button class="pay-btn" onclick="startPayment(1500)" data-i18n="buy">購入する</button>
       </div>
     </div>
     
@@ -401,8 +422,10 @@ function getSalesPageHTML(env) {
   </div>
 
   <script>
-    // === 多言語・多通貨翻訳データ ===
-    // ※ 実際の決済は日本円(JPY)で行われます。表示価格は参考換算です。
+    // === 価格ID（言語ごとに異なるStripe Price ID） ===
+    const PRICE_IDS = ${pricesJSON};
+
+    // === 多言語翻訳データ ===
     const translations = {
       ja: {
         title: "Nexa トークン販売",
@@ -422,18 +445,30 @@ function getSalesPageHTML(env) {
         feature3_2: "<b>無期限</b> ✅",
         feature3_3: "1端末のみで使用可能",
         buy: "購入する",
+        popular: "人気",
         discord: "Discordサーバーに参加する",
         hint: "💳 カード、Apple Pay、Google Payがご利用いただけます",
-        note: "決済はStripeにより安全に処理されます"
+        note: "決済はStripeにより安全に処理されます",
+        processing: "処理中...",
+        checkoutComplete: "✅ 決済完了",
+        issuing: "トークンを発行しています...",
+        purchaseComplete: "🎉 購入完了！",
+        yourToken: "あなたのトークン：",
+        tokenInstructions: "このトークンをゲーム内で入力してください",
+        errorTitle: "⚠️ エラー",
+        errorMessage: "トークン発行に失敗しました",
+        stripeNotSet: "StripeのPrice IDが設定されていません。管理画面を確認してください。",
+        checkoutFailed: "決済を開始できませんでした",
+        networkError: "通信エラー"
       },
       en: {
         title: "Nexa Token Shop",
         plan1: "Trial Plan",
         plan2: "Standard Plan",
         plan3: "Premium Plan",
-        price1: "$3.49",
-        price2: "$6.99",
-        price3: "$9.99",
+        price1: "$5",
+        price2: "$10",
+        price3: "$15",
         feature1_1: "<b>50 uses</b>",
         feature1_2: "Valid for 30 days",
         feature1_3: "Usable on 1 device",
@@ -444,18 +479,30 @@ function getSalesPageHTML(env) {
         feature3_2: "<b>No expiration</b> ✅",
         feature3_3: "Usable on 1 device",
         buy: "Purchase",
+        popular: "Popular",
         discord: "Join Discord Server",
         hint: "💳 Card, Apple Pay, Google Pay accepted",
-        note: "Payments securely processed by Stripe"
+        note: "Payments securely processed by Stripe",
+        processing: "Processing...",
+        checkoutComplete: "✅ Payment Complete",
+        issuing: "Issuing your token...",
+        purchaseComplete: "🎉 Purchase Complete!",
+        yourToken: "Your token:",
+        tokenInstructions: "Enter this token in the game",
+        errorTitle: "⚠️ Error",
+        errorMessage: "Failed to issue token",
+        stripeNotSet: "Stripe Price ID is not configured. Please check the admin panel.",
+        checkoutFailed: "Could not start checkout",
+        networkError: "Network error"
       },
       ko: {
         title: "Nexa 토큰 판매",
         plan1: "체험 플랜",
         plan2: "스탠다드 플랜",
         plan3: "프리미엄 플랜",
-        price1: "₩4,500",
-        price2: "₩9,000",
-        price3: "₩13,500",
+        price1: "₩6,690",
+        price2: "₩13,380",
+        price3: "₩20,070",
         feature1_1: "<b>50회</b> 사용권",
         feature1_2: "발급 후 30일 유효",
         feature1_3: "1대 기기에서만 사용 가능",
@@ -466,46 +513,65 @@ function getSalesPageHTML(env) {
         feature3_2: "<b>무기한</b> ✅",
         feature3_3: "1대 기기에서만 사용 가능",
         buy: "구매하기",
+        popular: "인기",
         discord: "Discord 서버 참가",
         hint: "💳 카드, Apple Pay, Google Pay 사용 가능",
-        note: "결제는 Stripe를 통해 안전하게 처리됩니다"
+        note: "결제는 Stripe를 통해 안전하게 처리됩니다",
+        processing: "처리 중...",
+        checkoutComplete: "✅ 결제 완료",
+        issuing: "토큰을 발급하고 있습니다...",
+        purchaseComplete: "🎉 구매 완료!",
+        yourToken: "당신의 토큰:",
+        tokenInstructions: "이 토큰을 게임 내에서 입력해 주세요",
+        errorTitle: "⚠️ 오류",
+        errorMessage: "토큰 발급에 실패했습니다",
+        stripeNotSet: "Stripe Price ID가 설정되지 않았습니다. 관리 화면을 확인해 주세요.",
+        checkoutFailed: "결제를 시작할 수 없습니다",
+        networkError: "통신 오류"
       }
     };
 
+    let currentLang = localStorage.getItem('lang') || 'ja';
+
+    function t(key) {
+      return translations[currentLang][key] || key;
+    }
+
     function setLanguage(lang) {
-      const t = translations[lang];
-      if (!t) return;
+      if (!translations[lang]) return;
+      currentLang = lang;
+      const tr = translations[lang];
       
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if (t[key]) el.textContent = t[key];
+        if (tr[key]) el.textContent = tr[key];
       });
       document.querySelectorAll('[data-i18n-html]').forEach(el => {
         const key = el.getAttribute('data-i18n-html');
-        if (t[key]) el.innerHTML = t[key];
+        if (tr[key]) el.innerHTML = tr[key];
       });
       
       localStorage.setItem('lang', lang);
       document.documentElement.lang = lang;
     }
 
-    const savedLang = localStorage.getItem('lang') || 'ja';
-    document.getElementById('langSelect').value = savedLang;
-    setLanguage(savedLang);
+    document.getElementById('langSelect').value = currentLang;
+    setLanguage(currentLang);
 
     document.getElementById('langSelect').addEventListener('change', (e) => {
       setLanguage(e.target.value);
     });
 
-    // === 決済処理 ===
-    async function startPayment(priceId) {
+    // === 決済処理（言語に応じたPrice IDを使用） ===
+    async function startPayment(plan) {
+      const priceId = PRICE_IDS[currentLang] && PRICE_IDS[currentLang][plan];
       if (!priceId || priceId.includes('NOT_SET')) {
-        alert('StripeのPrice IDが設定されていません。管理画面を確認してください。');
+        alert(t('stripeNotSet'));
         return;
       }
       const btn = event.target;
       btn.disabled = true;
-      btn.textContent = '処理中...';
+      btn.textContent = t('processing');
       try {
         const res = await fetch('/api/create-checkout', {
           method: 'POST',
@@ -514,24 +580,24 @@ function getSalesPageHTML(env) {
         });
         const data = await res.json();
         if (data.url) window.location.href = data.url;
-        else { alert('エラー: ' + (data.error || '決済を開始できませんでした')); btn.disabled = false; btn.textContent = '購入する'; }
-      } catch (err) { alert('通信エラー'); btn.disabled = false; btn.textContent = '購入する'; }
+        else { alert(t('errorTitle') + ': ' + (data.error || t('checkoutFailed'))); btn.disabled = false; btn.textContent = t('buy'); }
+      } catch (err) { alert(t('networkError')); btn.disabled = false; btn.textContent = t('buy'); }
     }
 
-    // === 決済完了後の処理 ===
+    // === 決済完了後の処理（多言語対応） ===
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
     if (sessionId && window.location.pathname === '/success') {
-      document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>✅ 決済完了</h2><p style="margin:20px 0;color:#ccc;">トークンを発行しています...</p></div>';
+      document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>' + t('checkoutComplete') + '</h2><p style="margin:20px 0;color:#ccc;">' + t('issuing') + '</p></div>';
       fetch('/api/fulfill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       }).then(r => r.json()).then(data => {
         if (data.success) {
-          document.body.innerHTML = \`<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>🎉 購入完了！</h2><p style="margin:16px 0;color:#ccc;">あなたのトークン：</p><div style="background:#222;padding:20px;border-radius:12px;border:1px solid #444;"><code style="font-size:20px;font-weight:bold;color:#5865F2;word-break:break-all;">\${data.token}</code></div><p style="margin-top:20px;font-size:14px;color:#888;">このトークンをゲーム内で入力してください</p></div>\`;
+          document.body.innerHTML = \`<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>\${t('purchaseComplete')}</h2><p style="margin:16px 0;color:#ccc;">\${t('yourToken')}</p><div style="background:#222;padding:20px;border-radius:12px;border:1px solid #444;"><code style="font-size:20px;font-weight:bold;color:#5865F2;word-break:break-all;">\${data.token}</code></div><p style="margin-top:20px;font-size:14px;color:#888;">\${t('tokenInstructions')}</p></div>\`;
         } else {
-          document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>⚠️ エラー</h2><p style="color:#ff5555;">' + (data.error || 'トークン発行に失敗しました') + '</p></div>';
+          document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>' + t('errorTitle') + '</h2><p style="color:#ff5555;">' + (data.error || t('errorMessage')) + '</p></div>';
         }
       });
     }
