@@ -1,55 +1,39 @@
-// Cloudflare Worker - MilkChoco トークン販売サイト
+// Cloudflare Worker - MilkChoco トークン販売サイト（3プラン対応版）
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-
-    // CORS対応（必要に応じて）
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
-    }
+    if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-    // --- ルーティング ---
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      return new Response(getSalesPageHTML(env), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      });
+      return new Response(getSalesPageHTML(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
-
-    // Stripe Checkout Session 作成
     if (url.pathname === '/api/create-checkout' && request.method === 'POST') {
       return await createCheckoutSession(request, env, corsHeaders);
     }
-
-    // 決済完了後のトークン発行
     if (url.pathname === '/api/fulfill' && request.method === 'POST') {
       return await fulfillOrder(request, env, corsHeaders);
     }
-
-    // Stripe Webhook（推奨：非同期でトークン発行する場合）
-    if (url.pathname === '/stripe-webhook' && request.method === 'POST') {
-      return await handleStripeWebhook(request, env);
-    }
-
     return new Response('Not Found', { status: 404 });
   },
 };
 
 // ============================================================
-// Stripe Checkout Session 作成
+// Stripe Checkout Session 作成（プランIDを受け取るように変更）
 // ============================================================
 async function createCheckoutSession(request, env, corsHeaders) {
   try {
     const body = await request.json();
-    const { email, userNote } = body;
+    const { priceId } = body; // フロントからpriceIdを受け取る
 
-    // Stripe API で Checkout Session を作成
+    if (!priceId) return new Response(JSON.stringify({ error: 'Price ID is required' }), { status: 400, headers: corsHeaders });
+
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
@@ -58,105 +42,75 @@ async function createCheckoutSession(request, env, corsHeaders) {
       },
       body: new URLSearchParams({
         'mode': 'payment',
-        'payment_method_types[0]': 'card',  // Apple Pay は card に含まれる
-        'line_items[0][price]': env.STRIPE_PRICE_ID,
+        'payment_method_types[0]': 'card', // Google Payもここに含まれます
+        'line_items[0][price]': priceId,
         'line_items[0][quantity]': '1',
         'success_url': `${new URL(request.url).origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         'cancel_url': `${new URL(request.url).origin}/cancel`,
-        'customer_email': email || undefined,
-        'client_reference_id': generateOrderId(),
-        'metadata[userNote]': userNote || '',
+        'metadata[priceId]': priceId, // 決済後にどのプランか判別するため保存
       }),
     });
 
     const session = await stripeResponse.json();
+    if (!stripeResponse.ok) throw new Error(session.error?.message || 'Stripe error');
 
-    if (!stripeResponse.ok) {
-      console.error('Stripe Error:', session);
-      return new Response(JSON.stringify({ error: session.error?.message || 'Stripe error' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
-    }
-
-    return new Response(JSON.stringify({
-      url: session.url,
-      sessionId: session.id,
-      clientReferenceId: session.client_reference_id,
-    }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
-
+    return new Response(JSON.stringify({ url: session.url }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
   } catch (err) {
     console.error('Checkout creation failed:', err);
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
   }
 }
 
 // ============================================================
-// 決済完了後のトークン発行
+// 決済完了後のトークン発行（プランに応じて回数・期限を自動設定）
 // ============================================================
 async function fulfillOrder(request, env, corsHeaders) {
   try {
-    const body = await request.json();
-    const { sessionId } = body;
+    const { sessionId } = await request.json();
 
     // 1. Stripe Session を検証
-    const stripeResponse = await fetch(
-      `https://api.stripe.com/v1/checkout/sessions/${sessionId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
-        },
-      }
-    );
+    const stripeResponse = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+      headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
+    });
     const session = await stripeResponse.json();
 
-    if (!stripeResponse.ok) {
-      return new Response(JSON.stringify({ error: 'Invalid session' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
+    if (!stripeResponse.ok || session.payment_status !== 'paid') {
+      return new Response(JSON.stringify({ error: 'Payment not completed' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // 決済が完了しているか確認
-    if (session.payment_status !== 'paid') {
-      return new Response(JSON.stringify({ error: 'Payment not completed' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
+    // 2. 購入したプランに応じて「回数」と「期限」を決定
+    const priceId = session.metadata?.priceId;
+    let uses, expires;
+
+    if (priceId === env.STRIPE_PRICE_ID_500) {
+      uses = 50;
+      expires = getFutureDate(30); // 30日後
+    } else if (priceId === env.STRIPE_PRICE_ID_1000) {
+      uses = 150;
+      expires = getFutureDate(30);
+    } else if (priceId === env.STRIPE_PRICE_ID_1500) {
+      uses = 1000000; // 実質無制限
+      expires = '2030-12-31'; // 2030年まで
+    } else {
+      return new Response(JSON.stringify({ error: 'Unknown price ID' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // 2. Render.com の管理APIでトークンを発行
-    const token = await issueTokenOnRender(env, session);
+    // 3. Render.com の管理APIでトークンを発行
+    const token = await issueTokenOnRender(env, session, uses, expires);
 
-    return new Response(JSON.stringify({
-      success: true,
-      token: token,
-      message: 'トークンを発行しました。ゲーム内で使用してください。',
-    }), {
+    return new Response(JSON.stringify({ success: true, token, message: 'トークンを発行しました。' }), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
-
   } catch (err) {
     console.error('Fulfillment failed:', err);
-    return new Response(JSON.stringify({ error: 'Fulfillment error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    return new Response(JSON.stringify({ error: 'Fulfillment error' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
   }
 }
 
 // ============================================================
-// Render.com の管理APIを呼び出してトークンを発行
+// Render.com の管理APIを呼び出す（回数・期限を引数で渡す）
 // ============================================================
-async function issueTokenOnRender(env, session) {
-  // Render側の管理画面はフォームベースなので、
-  // トークン発行用のAPIエンドポイントを別途追加する必要があります。
-  // 以下はその想定コードです（server.js に /api/admin/issue を追加）。
+async function issueTokenOnRender(env, session, uses, expires) {
   const response = await fetch(`${env.TOKEN_SERVER_URL}/api/admin/issue`, {
     method: 'POST',
     headers: {
@@ -164,28 +118,22 @@ async function issueTokenOnRender(env, session) {
       'X-Admin-Password': env.ADMIN_API_PASSWORD,
     },
     body: JSON.stringify({
-      user: session.customer_email || session.metadata?.userNote || 'customer',
+      user: session.customer_email || 'customer',
       version: '1.0',
-      uses: 10,
-      expires: getFutureDate(30), // 30日後
-      orderId: session.client_reference_id,
+      uses: uses,
+      expires: expires,
+      orderId: session.id,
     }),
   });
 
   const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || 'Token issue failed');
-  }
+  if (!response.ok) throw new Error(data.error || 'Token issue failed');
   return data.token;
 }
 
 // ============================================================
 // ユーティリティ
 // ============================================================
-function generateOrderId() {
-  return 'order_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
 function getFutureDate(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -193,9 +141,9 @@ function getFutureDate(days) {
 }
 
 // ============================================================
-// 販売ページHTML
+// 販売ページHTML（3プラン表示版）
 // ============================================================
-function getSalesPageHTML(env) {
+function getSalesPageHTML() {
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -204,145 +152,110 @@ function getSalesPageHTML(env) {
   <title>MilkChoco トークン販売</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .card {
-      background: white;
-      border-radius: 24px;
-      padding: 40px;
-      max-width: 480px;
-      width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    h1 { text-align: center; margin-bottom: 8px; font-size: 28px; }
-    .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 14px; }
-    .price {
-      text-align: center;
-      font-size: 48px;
-      font-weight: bold;
-      color: #667eea;
-      margin: 20px 0;
-    }
-    .price span { font-size: 20px; color: #888; font-weight: normal; }
-    .features {
-      list-style: none;
-      margin: 24px 0;
-      padding: 0;
-    }
-    .features li {
-      padding: 12px 0;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 15px;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .container { max-width: 900px; width: 100%; }
+    h1 { text-align: center; color: white; margin-bottom: 30px; font-size: 32px; text-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .card { background: white; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.15); transition: transform 0.2s; position: relative; }
+    .card:hover { transform: translateY(-5px); }
+    .card.popular { border: 3px solid #667eea; }
+    .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    .plan-name { font-size: 18px; color: #666; margin-bottom: 10px; }
+    .price { font-size: 40px; font-weight: bold; color: #333; margin: 15px 0; }
+    .price span { font-size: 16px; color: #888; font-weight: normal; }
+    .features { list-style: none; margin: 20px 0; padding: 0; text-align: left; }
+    .features li { padding: 8px 0; font-size: 14px; color: #555; border-bottom: 1px solid #eee; }
     .features li:last-child { border-bottom: none; }
-    .check { color: #4CAF50; font-weight: bold; }
-    .pay-btn {
-      width: 100%;
-      padding: 16px;
-      background: #000;
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .pay-btn:hover { opacity: 0.85; }
+    .check { color: #4CAF50; margin-right: 8px; }
+    .pay-btn { width: 100%; padding: 14px; background: #000; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; margin-top: 10px; }
+    .pay-btn:hover { opacity: 0.8; }
     .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .note { text-align: center; font-size: 12px; color: #aaa; margin-top: 16px; }
-    .apple-pay-hint { text-align: center; font-size: 13px; color: #666; margin-top: 8px; }
+    .note { text-align: center; font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 20px; }
+    .gp-hint { text-align: center; font-size: 13px; color: #666; margin-top: 8px; }
+    @media (max-width: 600px) { .plans { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>🥛 MilkChoco</h1>
-    <p class="subtitle">トークン購入</p>
+  <div class="container">
+    <h1>🥛 MilkChoco トークン</h1>
+    <div class="plans">
+      <!-- 500円プラン -->
+      <div class="card">
+        <div class="plan-name">お試しプラン</div>
+        <div class="price">¥500</div>
+        <ul class="features">
+          <li><span class="check">✓</span> 50回分の使用権</li>
+          <li><span class="check">✓</span> 発行から30日間有効</li>
+          <li><span class="check">✓</span> 1端末のみで使用可能</li>
+        </ul>
+        <button class="pay-btn" onclick="startPayment('${'${process.env.STRIPE_PRICE_ID_500 || 'price_500_placeholder'}'}')">購入する</button>
+      </div>
 
-    <div class="price">¥500 <span>/ 10回分</span></div>
+      <!-- 1000円プラン -->
+      <div class="card popular">
+        <div class="badge">人気</div>
+        <div class="plan-name">スタンダードプラン</div>
+        <div class="price">¥1,000</div>
+        <ul class="features">
+          <li><span class="check">✓</span> 150回分の使用権</li>
+          <li><span class="check">✓</span> 発行から30日間有効</li>
+          <li><span class="check">✓</span> 1端末のみで使用可能</li>
+        </ul>
+        <button class="pay-btn" onclick="startPayment('${'${process.env.STRIPE_PRICE_ID_1000 || 'price_1000_placeholder'}'}')">購入する</button>
+      </div>
 
-    <ul class="features">
-      <li><span class="check">✓</span> 10回分の使用権</li>
-      <li><span class="check">✓</span> 発行から30日間有効</li>
-      <li><span class="check">✓</span> 1端末のみで使用可能</li>
-      <li><span class="check">✓</span> 購入後すぐにトークン発行</li>
-    </ul>
-
-    <button class="pay-btn" id="payBtn" onclick="startPayment()">
-      💳 カード・Apple Payで支払う
-    </button>
-    <p class="apple-pay-hint">※ Apple Pay対応デバイスではApple Payが表示されます</p>
+      <!-- 1500円プラン -->
+      <div class="card">
+        <div class="plan-name">プレミアムプラン</div>
+        <div class="price">¥1,500</div>
+        <ul class="features">
+          <li><span class="check">✓</span> <b>無制限</b>（実質100万回）</li>
+          <li><span class="check">✓</span> <b>2030年12月31日まで有効</b></li>
+          <li><span class="check">✓</span> 1端末のみで使用可能</li>
+        </ul>
+        <button class="pay-btn" onclick="startPayment('${'${process.env.STRIPE_PRICE_ID_1500 || 'price_1500_placeholder'}'}')">購入する</button>
+      </div>
+    </div>
+    <p class="gp-hint">💳 カード、Apple Pay、Google Payがご利用いただけます</p>
     <p class="note">決済はStripeにより安全に処理されます</p>
   </div>
 
   <script>
-    async function startPayment() {
-      const btn = document.getElementById('payBtn');
+    async function startPayment(priceId) {
+      if (priceId.includes('placeholder')) {
+        alert('StripeのPrice IDが設定されていません。管理画面を確認してください。');
+        return;
+      }
+      const btn = event.target;
       btn.disabled = true;
       btn.textContent = '処理中...';
-
       try {
         const res = await fetch('/api/create-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ priceId }),
         });
         const data = await res.json();
-
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          alert('エラー: ' + (data.error || '決済を開始できませんでした'));
-          btn.disabled = false;
-          btn.textContent = '💳 カード・Apple Payで支払う';
-        }
-      } catch (err) {
-        alert('通信エラーが発生しました');
-        btn.disabled = false;
-        btn.textContent = '💳 カード・Apple Payで支払う';
-      }
+        if (data.url) window.location.href = data.url;
+        else { alert('エラー: ' + (data.error || '決済を開始できませんでした')); btn.disabled = false; btn.textContent = '購入する'; }
+      } catch (err) { alert('通信エラー'); btn.disabled = false; btn.textContent = '購入する'; }
     }
 
-    // 決済完了後のトークン表示
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
     if (sessionId && window.location.pathname === '/success') {
-      document.body.innerHTML = '<div class="card"><h1>✅ 決済完了</h1><p style="text-align:center;margin:20px 0;">トークンを発行しています...</p></div>';
+      document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;"><h2 style="text-align:center;">✅ 決済完了</h2><p style="text-align:center;margin:20px 0;">トークンを発行しています...</p></div>';
       fetch('/api/fulfill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            document.body.innerHTML = \`
-              <div class="card">
-                <h1>🎉 購入完了！</h1>
-                <p style="text-align:center;margin:16px 0;color:#666;">あなたのトークン：</p>
-                <div style="background:#f5f5f5;padding:20px;border-radius:12px;text-align:center;">
-                  <code style="font-size:20px;font-weight:bold;color:#667eea;word-break:break-all;">\${data.token}</code>
-                </div>
-                <p style="text-align:center;margin-top:20px;font-size:14px;color:#888;">このトークンをゲーム内で入力してください</p>
-              </div>\`;
-          } else {
-            document.body.innerHTML = '<div class="card"><h1>⚠️ エラー</h1><p style="text-align:center;color:red;">' + (data.error || 'トークン発行に失敗しました') + '</p></div>';
-          }
-        });
+      }).then(r => r.json()).then(data => {
+        if (data.success) {
+          document.body.innerHTML = \`<div class="card" style="max-width:480px;margin:40px auto;"><h2 style="text-align:center;">🎉 購入完了！</h2><p style="text-align:center;margin:16px 0;color:#666;">あなたのトークン：</p><div style="background:#f5f5f5;padding:20px;border-radius:12px;text-align:center;"><code style="font-size:20px;font-weight:bold;color:#667eea;word-break:break-all;">\${data.token}</code></div><p style="text-align:center;margin-top:20px;font-size:14px;color:#888;">このトークンをゲーム内で入力してください</p></div>\`;
+        } else {
+          document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;"><h2 style="text-align:center;">⚠️ エラー</h2><p style="text-align:center;color:red;">' + (data.error || 'トークン発行に失敗しました') + '</p></div>';
+        }
+      });
     }
   </script>
 </body>
