@@ -52,7 +52,10 @@ async function createCheckoutSession(request, env, corsHeaders) {
     });
 
     const session = await stripeResponse.json();
-    if (!stripeResponse.ok) throw new Error(session.error?.message || 'Stripe error');
+    if (!stripeResponse.ok) {
+      console.error('Stripe full error:', JSON.stringify(session));
+      throw new Error(JSON.stringify(session));
+    }
 
     return new Response(JSON.stringify({ url: session.url }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
   } catch (err) {
