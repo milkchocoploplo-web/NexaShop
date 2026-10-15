@@ -164,7 +164,7 @@ function getSalesPageHTML(env) {
       overflow-x: hidden;
     }
 
-    /* パララックス用の背景レイヤー（CSS背景画像に変更） */
+    /* パララックス用の背景レイヤー */
     .bg-layer {
       position: fixed;
       top: 0;
@@ -174,7 +174,8 @@ function getSalesPageHTML(env) {
       z-index: -1;
       background-image: url('${bgImage}');
       background-size: cover;
-      background-position: center center;
+      /* ▼ここを修正：上部ではなく中央を基準にすることで、キャラクターが真ん中に来る */
+      background-position: center center; 
       background-repeat: no-repeat;
       will-change: transform;
     }
@@ -187,7 +188,7 @@ function getSalesPageHTML(env) {
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.85) 40%, #000000 80%);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.85) 30%, #000000 70%);
     }
 
     /* メインコンテンツ */
@@ -196,7 +197,8 @@ function getSalesPageHTML(env) {
       width: 100%; 
       margin: 0 auto; 
       padding: 20px;
-      padding-top: 45vh; /* 最初は画像を見せて、下にスクロールするとコンテンツが出てくる */
+      /* ▼ここを修正：45vh → 30vh に減らし、プランが見えやすく */
+      padding-top: 30vh; 
       position: relative;
       z-index: 1;
     }
