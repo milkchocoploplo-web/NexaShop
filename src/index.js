@@ -1,4 +1,4 @@
-// Cloudflare Worker - MilkChoco トークン販売サイト（3プラン対応版）
+// Cloudflare Worker - MilkChoco トークン販売サイト（3プラン対応版・修正済み）
 
 export default {
   async fetch(request, env) {
@@ -12,7 +12,7 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      return new Response(getSalesPageHTML(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new Response(getSalesPageHTML(env), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     if (url.pathname === '/api/create-checkout' && request.method === 'POST') {
       return await createCheckoutSession(request, env, corsHeaders);
@@ -25,14 +25,14 @@ export default {
 };
 
 // ============================================================
-// Stripe Checkout Session 作成（プランIDを受け取るように変更）
+// Stripe Checkout Session 作成
 // ============================================================
 async function createCheckoutSession(request, env, corsHeaders) {
   try {
     const body = await request.json();
-    const { priceId } = body; // フロントからpriceIdを受け取る
+    const { priceId } = body;
 
-    if (!priceId) return new Response(JSON.stringify({ error: 'Price ID is required' }), { status: 400, headers: corsHeaders });
+    if (!priceId) return new Response(JSON.stringify({ error: 'Price ID is required' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
@@ -42,12 +42,12 @@ async function createCheckoutSession(request, env, corsHeaders) {
       },
       body: new URLSearchParams({
         'mode': 'payment',
-        'payment_method_types[0]': 'card', // Google Payもここに含まれます
+        'payment_method_types[0]': 'card',
         'line_items[0][price]': priceId,
         'line_items[0][quantity]': '1',
         'success_url': `${new URL(request.url).origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         'cancel_url': `${new URL(request.url).origin}/cancel`,
-        'metadata[priceId]': priceId, // 決済後にどのプランか判別するため保存
+        'metadata[priceId]': priceId,
       }),
     });
 
@@ -62,13 +62,12 @@ async function createCheckoutSession(request, env, corsHeaders) {
 }
 
 // ============================================================
-// 決済完了後のトークン発行（プランに応じて回数・期限を自動設定）
+// 決済完了後のトークン発行
 // ============================================================
 async function fulfillOrder(request, env, corsHeaders) {
   try {
     const { sessionId } = await request.json();
 
-    // 1. Stripe Session を検証
     const stripeResponse = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
       headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
     });
@@ -78,24 +77,22 @@ async function fulfillOrder(request, env, corsHeaders) {
       return new Response(JSON.stringify({ error: 'Payment not completed' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // 2. 購入したプランに応じて「回数」と「期限」を決定
     const priceId = session.metadata?.priceId;
     let uses, expires;
 
     if (priceId === env.STRIPE_PRICE_ID_500) {
       uses = 50;
-      expires = getFutureDate(30); // 30日後
+      expires = getFutureDate(30);
     } else if (priceId === env.STRIPE_PRICE_ID_1000) {
       uses = 150;
       expires = getFutureDate(30);
     } else if (priceId === env.STRIPE_PRICE_ID_1500) {
-      uses = 1000000; // 実質無制限
-      expires = '2030-12-31'; // 2030年まで
+      uses = 1000000;
+      expires = '2030-12-31';
     } else {
       return new Response(JSON.stringify({ error: 'Unknown price ID' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // 3. Render.com の管理APIでトークンを発行
     const token = await issueTokenOnRender(env, session, uses, expires);
 
     return new Response(JSON.stringify({ success: true, token, message: 'トークンを発行しました。' }), {
@@ -108,7 +105,7 @@ async function fulfillOrder(request, env, corsHeaders) {
 }
 
 // ============================================================
-// Render.com の管理APIを呼び出す（回数・期限を引数で渡す）
+// Render.com の管理APIを呼び出す
 // ============================================================
 async function issueTokenOnRender(env, session, uses, expires) {
   const response = await fetch(`${env.TOKEN_SERVER_URL}/api/admin/issue`, {
@@ -141,9 +138,13 @@ function getFutureDate(days) {
 }
 
 // ============================================================
-// 販売ページHTML（3プラン表示版）
+// 販売ページHTML（3プラン対応・env受け取り版）
 // ============================================================
-function getSalesPageHTML() {
+function getSalesPageHTML(env) {
+  const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
+  const price1000 = env.STRIPE_PRICE_ID_1000 || 'PRICE_1000_NOT_SET';
+  const price1500 = env.STRIPE_PRICE_ID_1500 || 'PRICE_1500_NOT_SET';
+
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -162,7 +163,6 @@ function getSalesPageHTML() {
     .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
     .plan-name { font-size: 18px; color: #666; margin-bottom: 10px; }
     .price { font-size: 40px; font-weight: bold; color: #333; margin: 15px 0; }
-    .price span { font-size: 16px; color: #888; font-weight: normal; }
     .features { list-style: none; margin: 20px 0; padding: 0; text-align: left; }
     .features li { padding: 8px 0; font-size: 14px; color: #555; border-bottom: 1px solid #eee; }
     .features li:last-child { border-bottom: none; }
@@ -179,7 +179,6 @@ function getSalesPageHTML() {
   <div class="container">
     <h1>🥛 MilkChoco トークン</h1>
     <div class="plans">
-      <!-- 500円プラン -->
       <div class="card">
         <div class="plan-name">お試しプラン</div>
         <div class="price">¥500</div>
@@ -188,10 +187,9 @@ function getSalesPageHTML() {
           <li><span class="check">✓</span> 発行から30日間有効</li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${'${process.env.STRIPE_PRICE_ID_500 || 'price_500_placeholder'}'}')">購入する</button>
+        <button class="pay-btn" onclick="startPayment('${price500}')">購入する</button>
       </div>
 
-      <!-- 1000円プラン -->
       <div class="card popular">
         <div class="badge">人気</div>
         <div class="plan-name">スタンダードプラン</div>
@@ -201,10 +199,9 @@ function getSalesPageHTML() {
           <li><span class="check">✓</span> 発行から30日間有効</li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${'${process.env.STRIPE_PRICE_ID_1000 || 'price_1000_placeholder'}'}')">購入する</button>
+        <button class="pay-btn" onclick="startPayment('${price1000}')">購入する</button>
       </div>
 
-      <!-- 1500円プラン -->
       <div class="card">
         <div class="plan-name">プレミアムプラン</div>
         <div class="price">¥1,500</div>
@@ -213,7 +210,7 @@ function getSalesPageHTML() {
           <li><span class="check">✓</span> <b>2030年12月31日まで有効</b></li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${'${process.env.STRIPE_PRICE_ID_1500 || 'price_1500_placeholder'}'}')">購入する</button>
+        <button class="pay-btn" onclick="startPayment('${price1500}')">購入する</button>
       </div>
     </div>
     <p class="gp-hint">💳 カード、Apple Pay、Google Payがご利用いただけます</p>
@@ -222,7 +219,7 @@ function getSalesPageHTML() {
 
   <script>
     async function startPayment(priceId) {
-      if (priceId.includes('placeholder')) {
+      if (!priceId || priceId.includes('NOT_SET')) {
         alert('StripeのPrice IDが設定されていません。管理画面を確認してください。');
         return;
       }
