@@ -1,0 +1,11 @@
+name = "milkchoco-sales"
+main = "src/index.js"
+compatibility_date = "2026-10-15"
+
+[vars]
+TOKEN_SERVER_URL = "https://hitsu-hack-server-bn9a.onrender.com"
+STRIPE_PRICE_ID = "price_xxxxxxxxxxxxx"  # Stripeで作成した商品のPrice ID
+
+# シークレット（wrangler secret put で設定）
+# STRIPE_SECRET_KEY
+# ADMIN_API_PASSWORD  ← Render側のADMIN_PASSWORDと同じ値
