@@ -1,4 +1,4 @@
-// Cloudflare Worker - Nexa トークン販売サイト（スマホ・PC対応 最終デザイン版）
+// Cloudflare Worker - Nexa トークン販売サイト（画像なし・シンプル版）
 
 export default {
   async fetch(request, env) {
@@ -138,13 +138,12 @@ function getFutureDate(days) {
 }
 
 // ============================================================
-// 販売ページHTML（ぼかし背景＋ヘッダー画像＋パララックス）
+// 販売ページHTML（画像なし・黒背景・Discordリンク対応版）
 // ============================================================
 function getSalesPageHTML(env) {
   const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
   const price1000 = env.STRIPE_PRICE_ID_1000 || 'PRICE_1000_NOT_SET';
   const price1500 = env.STRIPE_PRICE_ID_1500 || 'PRICE_1500_NOT_SET';
-  const bgImage = 'https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9797.jpeg';
 
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -157,89 +156,178 @@ function getSalesPageHTML(env) {
     
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      background: #000000; 
+      background: #080808; /* 深みのある黒 */
       min-height: 100vh; 
       color: #ffffff; 
-      overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
     }
 
-    /* ぼかした背景（パララックスで動く） */
-    .bg-blur {
-      position: fixed;
-      top: -15%; left: -15%;
-      width: 130%; height: 130%;
-      background-image: url('${bgImage}');
-      background-size: cover;
-      background-position: center;
-      filter: blur(30px) brightness(0.4);
-      z-index: -1;
-      will-change: transform;
-    }
-
-    /* メインコンテンツ */
     .container { 
-      max-width: 900px; 
+      max-width: 1000px; 
       width: 100%; 
       margin: 0 auto; 
-      padding: 20px;
-      padding-top: 40px; 
-      position: relative;
-      z-index: 1;
     }
     
-    /* ヘッダー画像（綺麗に表示される） */
-    .header-image {
-      width: 100%;
-      height: auto;
-      border-radius: 20px;
-      border: 1px solid #333;
-      margin-bottom: 25px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-      display: block;
+    h1 { 
+      text-align: center; 
+      color: #ffffff; 
+      margin-bottom: 40px; 
+      font-size: 32px; 
+      text-shadow: 0 0 15px rgba(255,255,255,0.15); 
     }
-
-    h1 { text-align: center; color: #ffffff; margin-bottom: 25px; font-size: 32px; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
-    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     
-    /* カードのデザイン */
-    .card { background: rgba(17, 17, 17, 0.8); backdrop-filter: blur(10px); border: 1px solid #333; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: transform 0.2s, border-color 0.2s; position: relative; }
-    .card:hover { transform: translateY(-5px); border-color: #5865F2; }
-    .card.popular { border: 2px solid #5865F2; }
+    .plans { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+      gap: 24px; 
+    }
     
-    .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #5865F2; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-    .plan-name { font-size: 18px; color: #aaaaaa; margin-bottom: 10px; }
-    .price { font-size: 40px; font-weight: bold; color: #ffffff; margin: 15px 0; }
+    /* カードのデザイン（すりガラス風） */
+    .card { 
+      background: #121212; 
+      border: 1px solid #2a2a2a; 
+      border-radius: 20px; 
+      padding: 35px 25px; 
+      text-align: center; 
+      transition: transform 0.3s, border-color 0.3s; 
+      position: relative; 
+    }
+    .card:hover { 
+      transform: translateY(-5px); 
+      border-color: #5865F2; 
+    }
+    .card.popular { 
+      border: 2px solid #5865F2; 
+      box-shadow: 0 0 30px rgba(88, 101, 242, 0.15);
+    }
     
-    .features { list-style: none; margin: 20px 0; padding: 0; text-align: left; }
-    .features li { padding: 8px 0; font-size: 14px; color: #cccccc; border-bottom: 1px solid #222; }
-    .features li:last-child { border-bottom: none; }
-    .check { color: #4CAF50; margin-right: 8px; }
+    .badge { 
+      position: absolute; 
+      top: -13px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      background: #5865F2; 
+      color: white; 
+      padding: 5px 16px; 
+      border-radius: 20px; 
+      font-size: 12px; 
+      font-weight: bold; 
+    }
     
-    .pay-btn { width: 100%; padding: 14px; background: #ffffff; color: #000000; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s, transform 0.1s; margin-top: 10px; }
-    .pay-btn:hover { opacity: 0.8; transform: scale(1.02); }
-    .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .plan-name { 
+      font-size: 18px; 
+      color: #aaaaaa; 
+      margin-bottom: 15px; 
+    }
+    
+    .price { 
+      font-size: 44px; 
+      font-weight: bold; 
+      color: #ffffff; 
+      margin-bottom: 25px; 
+    }
+    
+    .features { 
+      list-style: none; 
+      margin: 0 0 25px 0; 
+      padding: 0; 
+      text-align: left; 
+      border-top: 1px solid #222;
+    }
+    .features li { 
+      padding: 12px 0; 
+      font-size: 14px; 
+      color: #cccccc; 
+      border-bottom: 1px solid #222; 
+    }
+    .features li:last-child { 
+      border-bottom: none; 
+    }
+    .check { 
+      color: #4CAF50; 
+      margin-right: 8px; 
+      font-weight: bold;
+    }
+    
+    .pay-btn { 
+      width: 100%; 
+      padding: 16px; 
+      background: #ffffff; 
+      color: #000000; 
+      border: none; 
+      border-radius: 12px; 
+      font-size: 16px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      transition: all 0.2s; 
+    }
+    .pay-btn:hover { 
+      opacity: 0.85; 
+      transform: scale(1.02); 
+    }
+    .pay-btn:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+    }
     
     /* Discordボタン */
-    .discord-section { text-align: center; margin-top: 30px; }
-    .discord-btn { display: inline-flex; align-items: center; background: #5865F2; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 16px; transition: 0.2s; box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4); }
-    .discord-btn:hover { background: #4752C4; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(88, 101, 242, 0.6); }
-    .discord-btn svg { margin-right: 8px; width: 20px; height: 20px; fill: currentColor; }
+    .discord-section { 
+      text-align: center; 
+      margin-top: 40px; 
+    }
+    .discord-btn { 
+      display: inline-flex; 
+      align-items: center; 
+      background: #5865F2; 
+      color: white; 
+      padding: 14px 28px; 
+      border-radius: 12px; 
+      text-decoration: none; 
+      font-weight: bold; 
+      font-size: 16px; 
+      transition: 0.2s; 
+      box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3); 
+    }
+    .discord-btn:hover { 
+      background: #4752C4; 
+      transform: translateY(-2px); 
+      box-shadow: 0 6px 20px rgba(88, 101, 242, 0.5); 
+    }
+    .discord-btn svg { 
+      margin-right: 10px; 
+      width: 22px; 
+      height: 22px; 
+      fill: currentColor; 
+    }
     
-    .gp-hint { text-align: center; font-size: 13px; color: #aaaaaa; margin-top: 25px; }
-    .note { text-align: center; font-size: 12px; color: #555555; margin-top: 10px; }
-    @media (max-width: 600px) { .plans { grid-template-columns: 1fr; } }
+    .gp-hint { 
+      text-align: center; 
+      font-size: 13px; 
+      color: #888888; 
+      margin-top: 30px; 
+    }
+    .note { 
+      text-align: center; 
+      font-size: 12px; 
+      color: #444444; 
+      margin-top: 10px; 
+    }
+    
+    @media (max-width: 600px) { 
+      .plans { grid-template-columns: 1fr; } 
+      h1 { font-size: 26px; margin-bottom: 30px; }
+      .price { font-size: 38px; }
+    }
   </style>
 </head>
 <body>
-  <!-- ぼかし背景レイヤー -->
-  <div class="bg-blur" id="parallaxBg"></div>
-
   <div class="container">
-    <!-- 綺麗に表示されるヘッダー画像 -->
-    <img src="${bgImage}" class="header-image" alt="Nexa Gameplay">
-
     <h1>Nexa トークン販売</h1>
+    
     <div class="plans">
+      <!-- 500円プラン -->
       <div class="card">
         <div class="plan-name">お試しプラン</div>
         <div class="price">¥500</div>
@@ -251,6 +339,7 @@ function getSalesPageHTML(env) {
         <button class="pay-btn" onclick="startPayment('${price500}')">購入する</button>
       </div>
 
+      <!-- 1000円プラン -->
       <div class="card popular">
         <div class="badge">人気</div>
         <div class="plan-name">スタンダードプラン</div>
@@ -263,11 +352,12 @@ function getSalesPageHTML(env) {
         <button class="pay-btn" onclick="startPayment('${price1000}')">購入する</button>
       </div>
 
+      <!-- 1500円プラン -->
       <div class="card">
         <div class="plan-name">プレミアムプラン</div>
         <div class="price">¥1,500</div>
         <ul class="features">
-          <li><span class="check">✓</span> <b>無制限</b>（実質100万回）</li>
+          <li><span class="check">✓</span> <b>無制限</b></li>
           <li><span class="check">✓</span> <b>期限なし✅</b></li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
@@ -275,6 +365,7 @@ function getSalesPageHTML(env) {
       </div>
     </div>
     
+    <!-- Discord招待リンク -->
     <div class="discord-section">
       <a href="https://discord.gg/jc3mx8N3wT" target="_blank" class="discord-btn">
         <svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
@@ -287,16 +378,6 @@ function getSalesPageHTML(env) {
   </div>
 
   <script>
-    // === パララックススクロールの処理 ===
-    window.addEventListener('scroll', () => {
-      const scrolled = window.scrollY;
-      const parallaxBg = document.getElementById('parallaxBg');
-      if (parallaxBg) {
-        // スクロール量の0.5倍だけ背景を下に動かす
-        parallaxBg.style.transform = \`translate3d(0, \${scrolled * 0.5}px, 0)\`;
-      }
-    });
-
     // === 決済処理 ===
     async function startPayment(priceId) {
       if (!priceId || priceId.includes('NOT_SET')) {
@@ -322,16 +403,16 @@ function getSalesPageHTML(env) {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
     if (sessionId && window.location.pathname === '/success') {
-      document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;"><h2 style="text-align:center;">✅ 決済完了</h2><p style="text-align:center;margin:20px 0;color:#ccc;">トークンを発行しています...</p></div>';
+      document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>✅ 決済完了</h2><p style="margin:20px 0;color:#ccc;">トークンを発行しています...</p></div>';
       fetch('/api/fulfill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       }).then(r => r.json()).then(data => {
         if (data.success) {
-          document.body.innerHTML = \`<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;"><h2 style="text-align:center;">🎉 購入完了！</h2><p style="text-align:center;margin:16px 0;color:#ccc;">あなたのトークン：</p><div style="background:#222;padding:20px;border-radius:12px;text-align:center;border:1px solid #444;"><code style="font-size:20px;font-weight:bold;color:#5865F2;word-break:break-all;">\${data.token}</code></div><p style="text-align:center;margin-top:20px;font-size:14px;color:#888;">このトークンをゲーム内で入力してください</p></div>\`;
+          document.body.innerHTML = \`<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>🎉 購入完了！</h2><p style="margin:16px 0;color:#ccc;">あなたのトークン：</p><div style="background:#222;padding:20px;border-radius:12px;border:1px solid #444;"><code style="font-size:20px;font-weight:bold;color:#5865F2;word-break:break-all;">\${data.token}</code></div><p style="margin-top:20px;font-size:14px;color:#888;">このトークンをゲーム内で入力してください</p></div>\`;
         } else {
-          document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;"><h2 style="text-align:center;">⚠️ エラー</h2><p style="text-align:center;color:#ff5555;">' + (data.error || 'トークン発行に失敗しました') + '</p></div>';
+          document.body.innerHTML = '<div class="card" style="max-width:480px;margin:40px auto;background:#111;color:white;padding:30px;border-radius:20px;text-align:center;"><h2>⚠️ エラー</h2><p style="color:#ff5555;">' + (data.error || 'トークン発行に失敗しました') + '</p></div>';
         }
       });
     }
