@@ -245,7 +245,7 @@ function getSalesPageHTML(env) {
         <div class="price">¥500</div>
         <ul class="features">
           <li><span class="check">✓</span> <b>50回分</b>の使用権</li>
-          <li><span class="check">✓</span> 発行から30日間有効</li>
+          <li><span class="check">✓</span> 発行から30日間有効✅</li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
         <button class="pay-btn" onclick="startPayment('${price500}')">購入する</button>
@@ -257,7 +257,7 @@ function getSalesPageHTML(env) {
         <div class="price">¥1,000</div>
         <ul class="features">
           <li><span class="check">✓</span> <b>150回分</b>の使用権</li>
-          <li><span class="check">✓</span> 発行から30日間有効</li>
+          <li><span class="check">✓</span> 発行から30日間有効✅</li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
         <button class="pay-btn" onclick="startPayment('${price1000}')">購入する</button>
@@ -268,7 +268,7 @@ function getSalesPageHTML(env) {
         <div class="price">¥1,500</div>
         <ul class="features">
           <li><span class="check">✓</span> <b>無制限</b>（実質100万回）</li>
-          <li><span class="check">✓</span> <b>2090年まで有効</b></li>
+          <li><span class="check">✓</span> <b>期限なし✅</b></li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
         <button class="pay-btn" onclick="startPayment('${price1500}')">購入する</button>
