@@ -42,7 +42,6 @@ async function createCheckoutSession(request, env, corsHeaders) {
       },
       body: new URLSearchParams({
         'mode': 'payment',
-        'payment_method_types[0]': 'card',
         'line_items[0][price]': priceId,
         'line_items[0][quantity]': '1',
         'success_url': `${new URL(request.url).origin}/success?session_id={CHECKOUT_SESSION_ID}`,
