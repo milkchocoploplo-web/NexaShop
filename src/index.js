@@ -177,7 +177,7 @@ function getSalesPageHTML(env) {
 </head>
 <body>
   <div class="container">
-    <h1>🥛 MilkChoco トークン</h1>
+    <h1>Nexa トークン販売</h1>
     <div class="plans">
       <div class="card">
         <div class="plan-name">お試しプラン</div>
