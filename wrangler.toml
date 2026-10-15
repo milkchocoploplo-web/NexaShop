@@ -4,8 +4,14 @@ compatibility_date = "2026-10-15"
 
 [vars]
 TOKEN_SERVER_URL = "https://hitsu-hack-server-bn9a.onrender.com"
-STRIPE_PRICE_ID = "price_xxxxxxxxxxxxx"  # Stripeで作成した商品のPrice ID
-
-# シークレット（wrangler secret put で設定）
-# STRIPE_SECRET_KEY
-# ADMIN_API_PASSWORD  ← Render側のADMIN_PASSWORDと同じ値
+STRIPE_PRICE_ID_500 = "price_1UQiARFkucaZW3c7GrJzjJuR"
+STRIPE_PRICE_ID_1000 = "price_1UQlvjFkucaZW3c7YRBZEXdi"
+STRIPE_PRICE_ID_1500 = "price_1UQlvjFkucaZW3c7hCAMJDuR"
+STRIPE_PRICE_ID_500_USD = "price_1UQlvjFkucaZW3c72v1idcBr"
+STRIPE_PRICE_ID_1000_USD = "price_1UQlvjFkucaZW3c7UeUhbUWV"
+STRIPE_PRICE_ID_1500_USD = "price_1UQlvjFkucaZW3c7RuMgmchm"
+STRIPE_PRICE_ID_500_KRW = "price_1UQlvjFkucaZW3c7aYpN05sr"
+STRIPE_PRICE_ID_1000_KRW = "price_1UQlvjFkucaZW3c73YrLfOfj"
+STRIPE_PRICE_ID_1500_KRW = "price_1UQlvjFkucaZW3c7tiLIq752"
+STRIPE_SECRET_KEY = "pk_live_51UQhhTFkucaZW3c7mj3OfgAEA7X5gU1dKPhJKb0ql96zde6nwuXi1Gut8ACuCJSMcWslRF0yWQMqPN48KlbXSkGZ00xdq5jk7b"
+ADMIN_API_PASSWORD = "Piropiroro9999hits"
