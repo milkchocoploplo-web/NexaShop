@@ -45,7 +45,7 @@ async function createCheckoutSession(request, env, corsHeaders) {
         'line_items[0][price]': priceId,
         'line_items[0][quantity]': '1',
         'success_url': `${new URL(request.url).origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-        'cancel_url': `${new URL(request.url).origin}/cancel`,
+        'cancel_url': `${new URL(request.url).origin}/`,
         'metadata[priceId]': priceId,
       }),
     });
