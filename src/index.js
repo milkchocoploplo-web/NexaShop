@@ -1,4 +1,4 @@
-// Cloudflare Worker - Nexa トークン販売サイト（背景パララックス対応版）
+// Cloudflare Worker - Nexa トークン販売サイト（スマホ対応・背景パララックス修正版）
 
 export default {
   async fetch(request, env) {
@@ -144,6 +144,7 @@ function getSalesPageHTML(env) {
   const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
   const price1000 = env.STRIPE_PRICE_ID_1000 || 'PRICE_1000_NOT_SET';
   const price1500 = env.STRIPE_PRICE_ID_1500 || 'PRICE_1500_NOT_SET';
+  const bgImage = 'https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9788.jpeg';
 
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -163,35 +164,30 @@ function getSalesPageHTML(env) {
       overflow-x: hidden;
     }
 
-    /* 固定された背景画像コンテナ */
-    .bg-container {
+    /* パララックス用の背景レイヤー（CSS背景画像に変更） */
+    .bg-layer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
-      height: 100vh;
+      height: 120vh; /* スクロールで動く分、長めに確保 */
       z-index: -1;
-      overflow: hidden;
-    }
-    
-    /* 背景画像本体（パララックスで動く） */
-    .bg-image {
-      width: 100%;
-      height: 150vh; /* スクロールで動く分、余裕を持たせる */
-      object-fit: cover;
-      object-position: center top;
-      opacity: 0.35; /* 文字が読みやすいように暗くする */
+      background-image: url('${bgImage}');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
       will-change: transform;
     }
-    
-    /* 背景の上にかぶせる黒いグラデーション */
-    .bg-overlay {
+
+    /* 背景の上にかぶせる黒いグラデーション（文字を読みやすくする） */
+    .bg-layer::after {
+      content: '';
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.9) 80%, #000000 100%);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.85) 40%, #000000 80%);
     }
 
     /* メインコンテンツ */
@@ -200,7 +196,7 @@ function getSalesPageHTML(env) {
       width: 100%; 
       margin: 0 auto; 
       padding: 20px;
-      padding-top: 60vh; /* 最初は画像を見せて、下にスクロールするとコンテンツが出てくる */
+      padding-top: 45vh; /* 最初は画像を見せて、下にスクロールするとコンテンツが出てくる */
       position: relative;
       z-index: 1;
     }
@@ -209,7 +205,7 @@ function getSalesPageHTML(env) {
     .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     
     /* カードのデザイン */
-    .card { background: rgba(17, 17, 17, 0.85); backdrop-filter: blur(10px); border: 1px solid #333; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: transform 0.2s, border-color 0.2s; position: relative; }
+    .card { background: rgba(17, 17, 17, 0.8); backdrop-filter: blur(10px); border: 1px solid #333; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: transform 0.2s, border-color 0.2s; position: relative; }
     .card:hover { transform: translateY(-5px); border-color: #5865F2; }
     .card.popular { border: 2px solid #5865F2; }
     
@@ -238,11 +234,8 @@ function getSalesPageHTML(env) {
   </style>
 </head>
 <body>
-  <!-- 背景画像（パララックス用） -->
-  <div class="bg-container">
-    <img src="https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9788.jpeg" class="bg-image" id="parallaxImg" alt="Background">
-    <div class="bg-overlay"></div>
-  </div>
+  <!-- 背景レイヤー -->
+  <div class="bg-layer" id="parallaxBg"></div>
 
   <div class="container">
     <h1>Nexa トークン販売</h1>
@@ -297,10 +290,10 @@ function getSalesPageHTML(env) {
     // === パララックススクロールの処理 ===
     window.addEventListener('scroll', () => {
       const scrolled = window.scrollY;
-      const parallaxImg = document.getElementById('parallaxImg');
-      if (parallaxImg) {
+      const parallaxBg = document.getElementById('parallaxBg');
+      if (parallaxBg) {
         // スクロール量の0.5倍だけ背景を下に動かす
-        parallaxImg.style.transform = \`translate3d(0, \${scrolled * 0.5}px, 0)\`;
+        parallaxBg.style.transform = \`translate3d(0, \${scrolled * 0.5}px, 0)\`;
       }
     });
 
