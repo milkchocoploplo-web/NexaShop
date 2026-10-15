@@ -1,4 +1,4 @@
-// Cloudflare Worker - Nexa トークン販売サイト（画像なし・シンプル版）
+// Cloudflare Worker - Nexa トークン販売サイト（多言語対応版）
 
 export default {
   async fetch(request, env) {
@@ -138,7 +138,7 @@ function getFutureDate(days) {
 }
 
 // ============================================================
-// 販売ページHTML（画像なし・黒背景・Discordリンク対応版）
+// 販売ページHTML（多言語対応・黒背景・Discordリンク）
 // ============================================================
 function getSalesPageHTML(env) {
   const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
@@ -156,7 +156,7 @@ function getSalesPageHTML(env) {
     
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      background: #080808; /* 深みのある黒 */
+      background: #080808; 
       min-height: 100vh; 
       color: #ffffff; 
       display: flex;
@@ -184,7 +184,7 @@ function getSalesPageHTML(env) {
       gap: 24px; 
     }
     
-    /* カードのデザイン（すりガラス風） */
+    /* カードのデザイン */
     .card { 
       background: #121212; 
       border: 1px solid #2a2a2a; 
@@ -314,6 +314,28 @@ function getSalesPageHTML(env) {
       color: #444444; 
       margin-top: 10px; 
     }
+
+    /* 言語選択セレクター */
+    .lang-selector {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+    .lang-selector select {
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .lang-selector select:hover {
+      border-color: #5865F2;
+    }
     
     @media (max-width: 600px) { 
       .plans { grid-template-columns: 1fr; } 
@@ -323,45 +345,54 @@ function getSalesPageHTML(env) {
   </style>
 </head>
 <body>
+  <!-- 言語選択 -->
+  <div class="lang-selector">
+    <select id="langSelect">
+      <option value="ja">日本語</option>
+      <option value="en">English</option>
+      <option value="ko">한국어</option>
+    </select>
+  </div>
+
   <div class="container">
-    <h1>Nexa トークン販売</h1>
+    <h1 data-i18n="title">Nexa トークン販売</h1>
     
     <div class="plans">
       <!-- 500円プラン -->
       <div class="card">
-        <div class="plan-name">お試しプラン</div>
+        <div class="plan-name" data-i18n="plan1">お試しプラン</div>
         <div class="price">¥500</div>
         <ul class="features">
-          <li><span class="check">✓</span> <b>50回分</b>の使用権</li>
-          <li><span class="check">✓</span> 発行から30日間有効✅</li>
-          <li><span class="check">✓</span> 1端末のみで使用可能</li>
+          <li><span class="check">✓</span> <span data-i18n-html="feature1_1"><b>50回分</b>の使用権</span></li>
+          <li><span class="check">✓</span> <span data-i18n="feature1_2">発行から30日間有効</span></li>
+          <li><span class="check">✓</span> <span data-i18n="feature1_3">1端末のみで使用可能</span></li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${price500}')">購入する</button>
+        <button class="pay-btn" onclick="startPayment('${price500}')" data-i18n="buy">購入する</button>
       </div>
 
       <!-- 1000円プラン -->
       <div class="card popular">
         <div class="badge">人気</div>
-        <div class="plan-name">スタンダードプラン</div>
+        <div class="plan-name" data-i18n="plan2">スタンダードプラン</div>
         <div class="price">¥1,000</div>
         <ul class="features">
-          <li><span class="check">✓</span> <b>150回分</b>の使用権</li>
-          <li><span class="check">✓</span> 発行から30日間有効✅</li>
-          <li><span class="check">✓</span> 1端末のみで使用可能</li>
+          <li><span class="check">✓</span> <span data-i18n-html="feature2_1"><b>150回分</b>の使用権</span></li>
+          <li><span class="check">✓</span> <span data-i18n="feature2_2">発行から30日間有効</span></li>
+          <li><span class="check">✓</span> <span data-i18n="feature2_3">1端末のみで使用可能</span></li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${price1000}')">購入する</button>
+        <button class="pay-btn" onclick="startPayment('${price1000}')" data-i18n="buy">購入する</button>
       </div>
 
       <!-- 1500円プラン -->
       <div class="card">
-        <div class="plan-name">プレミアムプラン</div>
+        <div class="plan-name" data-i18n="plan3">プレミアムプラン</div>
         <div class="price">¥1,500</div>
         <ul class="features">
-          <li><span class="check">✓</span> <b>無制限</b></li>
-          <li><span class="check">✓</span> <b>期限なし✅</b></li>
-          <li><span class="check">✓</span> 1端末のみで使用可能</li>
+          <li><span class="check">✓</span> <span data-i18n-html="feature3_1"><b>無制限</b>（実質100万回）</span></li>
+          <li><span class="check">✓</span> <span data-i18n-html="feature3_2"><b>2090年まで有効</b></span></li>
+          <li><span class="check">✓</span> <span data-i18n="feature3_3">1端末のみで使用可能</span></li>
         </ul>
-        <button class="pay-btn" onclick="startPayment('${price1500}')">購入する</button>
+        <button class="pay-btn" onclick="startPayment('${price1500}')" data-i18n="buy">購入する</button>
       </div>
     </div>
     
@@ -369,15 +400,104 @@ function getSalesPageHTML(env) {
     <div class="discord-section">
       <a href="https://discord.gg/jc3mx8N3wT" target="_blank" class="discord-btn">
         <svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
-        Discordサーバーに参加する
+        <span data-i18n="discord">Discordサーバーに参加する</span>
       </a>
     </div>
 
-    <p class="gp-hint">💳 カード、Apple Pay、Google Payがご利用いただけます</p>
-    <p class="note">決済はStripeにより安全に処理されます</p>
+    <p class="gp-hint" data-i18n="hint">💳 カード、Apple Pay、Google Payがご利用いただけます</p>
+    <p class="note" data-i18n="note">決済はStripeにより安全に処理されます</p>
   </div>
 
   <script>
+    // === 多言語翻訳データ ===
+    const translations = {
+      ja: {
+        title: "Nexa トークン販売",
+        plan1: "お試しプラン",
+        plan2: "スタンダードプラン",
+        plan3: "プレミアムプラン",
+        feature1_1: "<b>50回分</b>の使用権",
+        feature1_2: "発行から30日間有効",
+        feature1_3: "1端末のみで使用可能",
+        feature2_1: "<b>150回分</b>の使用権",
+        feature2_2: "発行から30日間有効",
+        feature2_3: "1端末のみで使用可能",
+        feature3_1: "<b>無制限</b>（実質100万回）",
+        feature3_2: "<b>2090年まで有効</b>",
+        feature3_3: "1端末のみで使用可能",
+        buy: "購入する",
+        discord: "Discordサーバーに参加する",
+        hint: "💳 カード、Apple Pay、Google Payがご利用いただけます",
+        note: "決済はStripeにより安全に処理されます"
+      },
+      en: {
+        title: "Nexa Token Shop",
+        plan1: "Trial Plan",
+        plan2: "Standard Plan",
+        plan3: "Premium Plan",
+        feature1_1: "<b>50 uses</b>",
+        feature1_2: "Valid for 30 days",
+        feature1_3: "Usable on 1 device",
+        feature2_1: "<b>150 uses</b>",
+        feature2_2: "Valid for 30 days",
+        feature2_3: "Usable on 1 device",
+        feature3_1: "<b>Unlimited</b> (effectively 1,000,000 uses)",
+        feature3_2: "<b>Valid until 2090</b>",
+        feature3_3: "Usable on 1 device",
+        buy: "Purchase",
+        discord: "Join Discord Server",
+        hint: "💳 Card, Apple Pay, Google Pay accepted",
+        note: "Payments securely processed by Stripe"
+      },
+      ko: {
+        title: "Nexa 토큰 판매",
+        plan1: "체험 플랜",
+        plan2: "스탠다드 플랜",
+        plan3: "프리미엄 플랜",
+        feature1_1: "<b>50회</b> 사용권",
+        feature1_2: "발급 후 30일 유효",
+        feature1_3: "1대 기기에서만 사용 가능",
+        feature2_1: "<b>150회</b> 사용권",
+        feature2_2: "발급 후 30일 유효",
+        feature2_3: "1대 기기에서만 사용 가능",
+        feature3_1: "<b>무제한</b> (실질 100만 회)",
+        feature3_2: "<b>2090년까지 유효</b>",
+        feature3_3: "1대 기기에서만 사용 가능",
+        buy: "구매하기",
+        discord: "Discord 서버 참가",
+        hint: "💳 카드, Apple Pay, Google Pay 사용 가능",
+        note: "결제는 Stripe를 통해 안전하게 처리됩니다"
+      }
+    };
+
+    // === 言語切り替え処理 ===
+    function setLanguage(lang) {
+      const t = translations[lang];
+      if (!t) return;
+      
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) el.textContent = t[key];
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        if (t[key]) el.innerHTML = t[key];
+      });
+      
+      localStorage.setItem('lang', lang);
+      document.documentElement.lang = lang;
+    }
+
+    // 初期化
+    const savedLang = localStorage.getItem('lang') || 'ja';
+    document.getElementById('langSelect').value = savedLang;
+    setLanguage(savedLang);
+
+    // セレクター変更時
+    document.getElementById('langSelect').addEventListener('change', (e) => {
+      setLanguage(e.target.value);
+    });
+
     // === 決済処理 ===
     async function startPayment(priceId) {
       if (!priceId || priceId.includes('NOT_SET')) {
