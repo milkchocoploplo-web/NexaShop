@@ -88,7 +88,7 @@ async function fulfillOrder(request, env, corsHeaders) {
       expires = getFutureDate(30);
     } else if (priceId === env.STRIPE_PRICE_ID_1500) {
       uses = 1000000;
-      expires = '2030-12-31';
+      expires = '2090-12-31';
     } else {
       return new Response(JSON.stringify({ error: 'Unknown price ID' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
@@ -171,7 +171,7 @@ function getSalesPageHTML(env) {
     .pay-btn:hover { opacity: 0.8; }
     .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .note { text-align: center; font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 20px; }
-    .gp-hint { text-align: center; font-size: 13px; color: #666; margin-top: 8px; }
+    .gp-hint { text-align: center; font-size: 13px; color: #000; margin-top: 8px; }
     @media (max-width: 600px) { .plans { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -183,7 +183,7 @@ function getSalesPageHTML(env) {
         <div class="plan-name">お試しプラン</div>
         <div class="price">¥500</div>
         <ul class="features">
-          <li><span class="check">✓</span> 50回分の使用権</li>
+          <li><span class="check">✓</span> <b>50回分の</b>使用権</li>
           <li><span class="check">✓</span> 発行から30日間有効</li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
@@ -195,7 +195,7 @@ function getSalesPageHTML(env) {
         <div class="plan-name">スタンダードプラン</div>
         <div class="price">¥1,000</div>
         <ul class="features">
-          <li><span class="check">✓</span> 150回分の使用権</li>
+          <li><span class="check">✓</span> <b>150回分</b>の使用権</li>
           <li><span class="check">✓</span> 発行から30日間有効</li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
@@ -206,8 +206,8 @@ function getSalesPageHTML(env) {
         <div class="plan-name">プレミアムプラン</div>
         <div class="price">¥1,500</div>
         <ul class="features">
-          <li><span class="check">✓</span> <b>無制限</b>（実質100万回）</li>
-          <li><span class="check">✓</span> <b>2030年12月31日まで有効</b></li>
+          <li><span class="check">✓</span> <b>無制限</b></li>
+          <li><span class="check">✓</span> <b>期限なし</b></li>
           <li><span class="check">✓</span> 1端末のみで使用可能</li>
         </ul>
         <button class="pay-btn" onclick="startPayment('${price1500}')">購入する</button>
