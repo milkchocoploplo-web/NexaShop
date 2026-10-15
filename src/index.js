@@ -144,7 +144,7 @@ function getSalesPageHTML(env) {
   const price500 = env.STRIPE_PRICE_ID_500 || 'PRICE_500_NOT_SET';
   const price1000 = env.STRIPE_PRICE_ID_1000 || 'PRICE_1000_NOT_SET';
   const price1500 = env.STRIPE_PRICE_ID_1500 || 'PRICE_1500_NOT_SET';
-  const bgImage = 'https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9788.jpeg';
+  const bgImage = 'https://raw.githubusercontent.com/milkchocoploplo-web/NexaShop/main/IMG_9797.jpeg';
 
   return `<!DOCTYPE html>
 <html lang="ja">
