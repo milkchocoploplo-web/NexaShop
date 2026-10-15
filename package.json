@@ -1,0 +1,13 @@
+{
+  "name": "nexashop",
+  "version": "1.0.0",
+  "description": "MilkChoco Token Sales Site on Cloudflare Workers",
+  "main": "src/index.js",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
